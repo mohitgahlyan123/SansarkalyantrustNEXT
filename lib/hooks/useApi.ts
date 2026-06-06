@@ -23,7 +23,7 @@ export const useCampaign = (slug: string) => {
 export const useEvents = () => {
   const { data, error, isLoading } = useSWR('/api/events', fetcher)
   return {
-    events: data || [],
+    events: Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [],
     isLoading,
     isError: !!error,
   }

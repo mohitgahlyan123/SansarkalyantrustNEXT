@@ -54,9 +54,9 @@ export default function VolunteersPage() {
                     <p className="text-sm text-muted-foreground">{volunteer.email} • {volunteer.city}</p>
                     {volunteer.skills && (
                       <div className="flex gap-2 mt-2 flex-wrap">
-                        {volunteer.skills.map((skill: string) => (
+                        {volunteer.skills.map((skill: string, index: number) => (
                           <span
-                            key={`${volunteer._id}-${skill}`}
+                            key={`${volunteer._id}-${skill}-${index}`}
                             className="text-xs bg-primary/10 text-primary px-2 py-1 rounded"
                           >
                             {skill}
