@@ -116,7 +116,7 @@ export default function AdminReviewsPage() {
       {loading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="p-6 rounded-lg bg-muted animate-pulse" />
+            <div key={`skeleton-${i}`} className="p-6 rounded-lg bg-muted animate-pulse" />
           ))}
         </div>
       ) : reviews.length === 0 ? (

@@ -18,7 +18,7 @@ export default function VolunteersPage() {
     try {
       const response = await fetch('/api/volunteer')
       const data = await response.json()
-      setVolunteers(data)
+      setVolunteers(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [])
     } catch (error) {
       console.error('Failed to fetch volunteers:', error)
     } finally {
@@ -56,7 +56,7 @@ export default function VolunteersPage() {
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {volunteer.skills.map((skill: string) => (
                           <span
-                            key={skill}
+                            key={`${volunteer._id}-${skill}`}
                             className="text-xs bg-primary/10 text-primary px-2 py-1 rounded"
                           >
                             {skill}

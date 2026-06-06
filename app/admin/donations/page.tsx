@@ -19,9 +19,12 @@ export default function DonationsPage() {
     try {
       const response = await fetch('/api/donations')
       const data = await response.json()
-      setDonations(data)
-      const total = data.reduce((sum: number, d: any) => sum + (d.amount || 0), 0)
-      setTotalAmount(total)
+      const donationsList = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []
+      setDonations(donationsList)
+      setTotalAmount(typeof data?.totalAmount === 'number'
+        ? data.totalAmount
+        : donationsList.reduce((sum: number, donation: any) => sum + (donation.amount || 0), 0)
+      )
     } catch (error) {
       console.error('Failed to fetch donations:', error)
     } finally {

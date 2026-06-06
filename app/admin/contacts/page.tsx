@@ -18,7 +18,7 @@ export default function ContactsPage() {
     try {
       const response = await fetch('/api/contact')
       const data = await response.json()
-      setContacts(data)
+      setContacts(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [])
     } catch (error) {
       console.error('Failed to fetch contacts:', error)
     } finally {

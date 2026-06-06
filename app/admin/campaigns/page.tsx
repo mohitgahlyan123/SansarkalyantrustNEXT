@@ -23,7 +23,7 @@ export default function CampaignsPage() {
     try {
       const response = await fetch('/api/campaigns')
       const data = await response.json()
-      setCampaigns(data)
+      setCampaigns(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [])
     } catch (error) {
       console.error('Failed to fetch campaigns:', error)
     } finally {

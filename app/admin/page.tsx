@@ -142,7 +142,7 @@ export default async function AdminDashboard() {
           {statCards.map((card) => {
             const Icon = card.icon
             return (
-              <Link key={card.href} href={card.href}>
+              <Link key={`${card.href}-${card.label}`} href={card.href}>
                 <Card className={`p-6 hover:shadow-md hover:scale-105 transition-all cursor-pointer ${card.color}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
