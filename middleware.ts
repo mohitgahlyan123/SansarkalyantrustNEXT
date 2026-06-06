@@ -5,11 +5,9 @@ export function middleware(request: NextRequest) {
 
   // Check if route requires authentication
   if (pathname.startsWith('/admin')) {
-    // Get session from cookies
     const session = request.cookies.get('session')
 
     if (!session) {
-      // Redirect to login if no session
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -24,10 +22,20 @@ export function middleware(request: NextRequest) {
         return response
       }
 
-      // Check if user is admin (only allow admins to access certain routes)
-      if (pathname.startsWith('/admin/users') && sessionData.role !== 'admin') {
+      // Role-based access control
+      const role = sessionData.role
+
+      // Only superadmin can access user management
+      if (pathname.startsWith('/admin/users') && role !== 'superadmin') {
         return NextResponse.redirect(new URL('/admin', request.url))
       }
+
+      // Only superadmin and admin can access settings
+      if (pathname.startsWith('/admin/settings') && role === 'editor') {
+        return NextResponse.redirect(new URL('/admin', request.url))
+      }
+
+      // Editors cannot delete content (handled at API level)
     } catch (error) {
       return NextResponse.redirect(new URL('/login', request.url))
     }

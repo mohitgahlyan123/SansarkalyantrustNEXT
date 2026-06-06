@@ -1,35 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Mock campaigns data
-const mockCampaigns = [
-  {
-    slug: 'har-daan-ek-pehchaan',
-    title: 'Har Daan Ek Pehchaan',
-    description: 'Every donation creates an identity for someone in need. Support our core mission of healthcare, education, and community development.',
-    image: '/placeholder.svg?height=400&width=600',
-    goal: 500000,
-    raised: 125000,
-    donors: 450,
-  },
-  {
-    slug: 'swasth-samaj-sashakt-bharat',
-    title: 'Swasth Samaj Sashakt Bharat',
-    description: 'Supporting health camps and medical awareness programs in rural communities to ensure universal access to quality healthcare.',
-    image: '/placeholder.svg?height=400&width=600',
-    goal: 300000,
-    raised: 180000,
-    donors: 320,
-  },
-  {
-    slug: 'sadak-suraksha-pashu-raksha',
-    title: 'Sadak Suraksha Pashu Raksha',
-    description: 'Street animal rescue and care program to protect and support stray animals across districts.',
-    image: '/placeholder.svg?height=400&width=600',
-    goal: 150000,
-    raised: 45000,
-    donors: 120,
-  },
-]
+import { connectDB } from '@/lib/mongodb'
+import { Campaign } from '@/lib/models'
+import { campaignUpdateSchema } from '@/lib/validations'
 
 export async function GET(
   request: NextRequest,
@@ -37,21 +9,78 @@ export async function GET(
 ) {
   try {
     const { slug } = await params
-    const campaign = mockCampaigns.find(c => c.slug === slug)
+    const db = await connectDB()
 
-    if (!campaign) {
+    if (db) {
+      const campaign = await Campaign.findOne({ slug }).lean()
+      if (!campaign) {
+        return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+      }
+      return NextResponse.json(campaign)
+    }
+
+    return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+  } catch (error) {
+    console.error('Error fetching campaign:', error)
+    return NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 })
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await params
+    const body = await request.json()
+
+    const validation = campaignUpdateSchema.safeParse(body)
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Campaign not found' },
-        { status: 404 }
+        { error: validation.error.errors[0].message },
+        { status: 400 }
       )
     }
 
-    return NextResponse.json(campaign)
+    const db = await connectDB()
+    if (db) {
+      const campaign = await Campaign.findOneAndUpdate(
+        { slug },
+        { $set: validation.data },
+        { new: true }
+      )
+      if (!campaign) {
+        return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+      }
+      return NextResponse.json(campaign)
+    }
+
+    return NextResponse.json({ error: 'Database not connected' }, { status: 503 })
   } catch (error) {
-    console.error('Error fetching campaign:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch campaign' },
-      { status: 500 }
-    )
+    console.error('Error updating campaign:', error)
+    return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await params
+    const db = await connectDB()
+
+    if (db) {
+      const campaign = await Campaign.findOneAndDelete({ slug })
+      if (!campaign) {
+        return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+      }
+      return NextResponse.json({ success: true, message: 'Campaign deleted' })
+    }
+
+    return NextResponse.json({ error: 'Database not connected' }, { status: 503 })
+  } catch (error) {
+    console.error('Error deleting campaign:', error)
+    return NextResponse.json({ error: 'Failed to delete campaign' }, { status: 500 })
   }
 }

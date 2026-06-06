@@ -1,44 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcryptjs from 'bcryptjs'
+import { connectDB } from '@/lib/mongodb'
+import { User } from '@/lib/models'
 import { addMockUser, findMockUserByEmail } from '@/lib/mock-users'
+import { registerSchema } from '@/lib/validations'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name, confirmPassword } = body
 
-    // Validation
-    if (!email || !password || !name || !confirmPassword) {
+    // Validate input
+    const validation = registerSchema.safeParse(body)
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: validation.error.errors[0].message },
         { status: 400 }
       )
     }
 
-    if (password !== confirmPassword) {
+    const { email, password, name, role } = validation.data
+
+    // Try MongoDB first
+    const db = await connectDB()
+
+    if (db) {
+      const existingUser = await User.findOne({ email: email.toLowerCase() })
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'Email already registered' },
+          { status: 409 }
+        )
+      }
+
+      const hashedPassword = await bcryptjs.hash(password, 10)
+      const newUser = await User.create({
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        name,
+        role: role || 'admin',
+        isActive: true,
+      })
+
       return NextResponse.json(
-        { error: 'Passwords do not match' },
-        { status: 400 }
+        {
+          success: true,
+          message: 'Registration successful. Please login to continue.',
+          user: {
+            id: newUser._id.toString(),
+            email: newUser.email,
+            name: newUser.name,
+            role: newUser.role,
+          },
+        },
+        { status: 201 }
       )
     }
 
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      )
-    }
-
-    if (name.length < 2) {
-      return NextResponse.json(
-        { error: 'Name must be at least 2 characters' },
-        { status: 400 }
-      )
-    }
-
-    // Check if user already exists
+    // Fallback to mock storage
     const existingUser = findMockUserByEmail(email)
-
     if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
@@ -46,17 +65,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash password
-    const salt = await bcryptjs.genSalt(10)
-    const hashedPassword = await bcryptjs.hash(password, salt)
-
-    // Create user in mock storage
+    const hashedPassword = await bcryptjs.hash(password, 10)
     const newUser = {
-      _id: Math.random().toString(),
+      _id: Math.random().toString(36).substring(7),
       email: email.toLowerCase(),
       password: hashedPassword,
       name,
-      role: 'editor' as const,
+      role: (role || 'admin') as 'superadmin' | 'admin' | 'editor',
       isActive: true,
       createdAt: new Date(),
     }

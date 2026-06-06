@@ -1,13 +1,12 @@
 import { cookies } from 'next/headers'
-import { jwtVerify } from 'jose'
 
-const secret = new TextEncoder().encode(process.env.AUTH_SECRET || 'default-secret-key-change-in-production')
+const AUTH_SECRET = process.env.AUTH_SECRET || 'default-secret-key-change-in-production'
 
 export interface SessionPayload {
   userId: string
   email: string
   name: string
-  role: 'admin' | 'editor'
+  role: 'superadmin' | 'admin' | 'editor'
   iat: number
   exp: number
 }
@@ -17,16 +16,16 @@ export async function createSession(payload: Omit<SessionPayload, 'iat' | 'exp'>
 
   const session = {
     ...payload,
-    expiresAt,
+    expiresAt: expiresAt.toISOString(),
+    iat: Date.now(),
   }
 
-  // Store session in cookie (simplified for demo)
   const cookieStore = await cookies()
   cookieStore.set('session', JSON.stringify(session), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    maxAge: 7 * 24 * 60 * 60,
     path: '/',
   })
 
@@ -67,4 +66,16 @@ export async function validateSession() {
     return null
   }
   return session
+}
+
+export function isSuperAdmin(session: SessionPayload | null) {
+  return session?.role === 'superadmin'
+}
+
+export function isAdmin(session: SessionPayload | null) {
+  return session?.role === 'superadmin' || session?.role === 'admin'
+}
+
+export function isEditor(session: SessionPayload | null) {
+  return session?.role === 'superadmin' || session?.role === 'admin' || session?.role === 'editor'
 }

@@ -1,43 +1,28 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Event } from '@/lib/models'
-import { NextRequest, NextResponse } from 'next/server'
+import { eventUpdateSchema } from '@/lib/validations'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    await connectDB()
     const { slug } = await params
+    const db = await connectDB()
 
-    const event = await Event.findOne({ slug }).lean()
-
-    if (!event) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Event not found',
-        },
-        { status: 404 }
-      )
+    if (db) {
+      const event = await Event.findOne({ slug }).lean()
+      if (!event) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+      }
+      return NextResponse.json(event)
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: event,
-      },
-      { status: 200 }
-    )
+    return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   } catch (error) {
     console.error('Error fetching event:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch event',
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch event' }, { status: 500 })
   }
 }
 
@@ -46,38 +31,31 @@ export async function PUT(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    await connectDB()
     const { slug } = await params
     const body = await request.json()
 
-    const event = await Event.findOneAndUpdate({ slug }, body, { new: true })
-
-    if (!event) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Event not found',
-        },
-        { status: 404 }
-      )
+    const validation = eventUpdateSchema.safeParse(body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error.errors[0].message }, { status: 400 })
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: event,
-      },
-      { status: 200 }
-    )
+    const db = await connectDB()
+    if (db) {
+      const event = await Event.findOneAndUpdate(
+        { slug },
+        { $set: validation.data },
+        { new: true }
+      )
+      if (!event) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+      }
+      return NextResponse.json(event)
+    }
+
+    return NextResponse.json({ error: 'Database not connected' }, { status: 503 })
   } catch (error) {
     console.error('Error updating event:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to update event',
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to update event' }, { status: 500 })
   }
 }
 
@@ -86,36 +64,20 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    await connectDB()
     const { slug } = await params
+    const db = await connectDB()
 
-    const event = await Event.findOneAndDelete({ slug })
-
-    if (!event) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Event not found',
-        },
-        { status: 404 }
-      )
+    if (db) {
+      const event = await Event.findOneAndDelete({ slug })
+      if (!event) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+      }
+      return NextResponse.json({ success: true, message: 'Event deleted' })
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: event,
-      },
-      { status: 200 }
-    )
+    return NextResponse.json({ error: 'Database not connected' }, { status: 503 })
   } catch (error) {
     console.error('Error deleting event:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete event',
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 })
   }
 }
